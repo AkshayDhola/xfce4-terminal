@@ -11,12 +11,15 @@ terminal/main.c
 terminal/terminal-app.c
 terminal/terminal-encoding-action.c
 terminal/terminal-gdbus.c
+terminal/terminal-history-dialog.c
+terminal/terminal-history.c
 terminal/terminal-image-loader.c
 terminal/terminal-options.c
 terminal/terminal-preferences-dialog.c
 terminal/terminal-preferences.c
 terminal/terminal-screen.c
 terminal/terminal-search-dialog.c
+terminal/terminal-suggestion.c
 terminal/terminal-util.c
 terminal/terminal-widget.c
 terminal/terminal-window-dropdown.c

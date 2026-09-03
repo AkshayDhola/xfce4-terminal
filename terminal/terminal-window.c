@@ -37,6 +37,7 @@
 
 #include "terminal-encoding-action.h"
 #include "terminal-enum-types.h"
+#include "terminal-history-dialog.h"
 #include "terminal-marshal.h"
 #include "terminal-options.h"
 #include "terminal-preferences-dialog.h"
@@ -270,6 +271,8 @@ static gboolean
 terminal_window_action_search_next (TerminalWindow *window);
 static gboolean
 terminal_window_action_search_prev (TerminalWindow *window);
+static gboolean
+terminal_window_action_search_history (TerminalWindow *window);
 static gboolean
 terminal_window_action_save_contents (TerminalWindow *window);
 static gboolean
@@ -713,6 +716,16 @@ static XfceGtkActionEntry action_entries[] = {
     NULL,
     NULL,
     G_CALLBACK (terminal_window_action_search_prev),
+  },
+  {
+    TERMINAL_WINDOW_ACTION_SEARCH_HISTORY,
+    "<Actions>/terminal-window/search-history",
+    "<control><shift>r",
+    XFCE_GTK_IMAGE_MENU_ITEM,
+    N_ ("Command _History..."),
+    N_ ("Search previously used commands"),
+    "document-open-recent",
+    G_CALLBACK (terminal_window_action_search_history),
   },
   {
     TERMINAL_WINDOW_ACTION_SAVE_CONTENTS,
@@ -2951,6 +2964,37 @@ terminal_window_action_search (TerminalWindow *window)
 
 
 static gboolean
+terminal_window_action_search_history (TerminalWindow *window)
+{
+  GtkWidget *dialog;
+  gchar *command;
+
+  if (G_UNLIKELY (window->priv->active == NULL))
+    return TRUE;
+
+  dialog = terminal_history_dialog_new (GTK_WINDOW (window));
+
+  window->priv->n_child_windows++;
+  if (gtk_dialog_run (GTK_DIALOG (dialog)) == GTK_RESPONSE_ACCEPT)
+    {
+      command = terminal_history_dialog_get_command (TERMINAL_HISTORY_DIALOG (dialog));
+      if (command != NULL)
+        {
+          /* the command is only typed for the user, running it stays their choice */
+          terminal_screen_feed_text (window->priv->active, command);
+          g_free (command);
+        }
+    }
+  window->priv->n_child_windows--;
+
+  gtk_widget_destroy (dialog);
+
+  return TRUE;
+}
+
+
+
+static gboolean
 prepare_regex (TerminalWindow *window)
 {
   VteRegex *regex;
@@ -3982,6 +4026,7 @@ terminal_window_update_terminal_menu (TerminalWindow *window,
   gtk_widget_set_sensitive (item, can_search);
   item = xfce_gtk_menu_item_new_from_action_entry (get_action_entry (TERMINAL_WINDOW_ACTION_SEARCH_PREV), G_OBJECT (window), GTK_MENU_SHELL (menu));
   gtk_widget_set_sensitive (item, can_search);
+  xfce_gtk_menu_item_new_from_action_entry (get_action_entry (TERMINAL_WINDOW_ACTION_SEARCH_HISTORY), G_OBJECT (window), GTK_MENU_SHELL (menu));
   xfce_gtk_menu_append_separator (GTK_MENU_SHELL (menu));
 
   /* Set Encoding uses the TerminalAction, GtkAction, therefore it is deprecated */

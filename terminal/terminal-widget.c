@@ -147,6 +147,7 @@ struct _TerminalWidget
 
   /*< private >*/
   TerminalPreferences *preferences;
+  TerminalSuggestion *suggestion;
   GtkAccelGroup *accel_group;
   gint regex_tags[G_N_ELEMENTS (regex_patterns)];
   pcre2_code_8 *regex_pcre[G_N_ELEMENTS (regex_patterns)];
@@ -345,6 +346,9 @@ terminal_widget_finalize (GObject *object)
   if (VTE_IS_PTY (pty))
     utempter_remove_record (vte_pty_get_fd (pty));
 #endif
+
+  /* the suggestion is owned by the screen, only drop the borrowed pointer */
+  terminal_widget_set_suggestion (widget, NULL);
 
   /* disconnect the misc-highlight-urls watch */
   g_signal_handlers_disconnect_by_func (G_OBJECT (widget->preferences), G_CALLBACK (terminal_widget_update_highlight_urls), widget);
@@ -841,10 +845,18 @@ static gboolean
 terminal_widget_key_press_event (GtkWidget *widget,
                                  GdkEventKey *event)
 {
+  TerminalWidget *terminal_widget = TERMINAL_WIDGET (widget);
   gboolean shortcuts_no_menukey;
 
+  /* accept the shown suggestion, like a shell would complete on "Right" */
+  if ((event->keyval == GDK_KEY_Right || event->keyval == GDK_KEY_KP_Right)
+      && (event->state & gtk_accelerator_get_default_mod_mask ()) == 0
+      && terminal_widget->suggestion != NULL
+      && terminal_suggestion_accept (terminal_widget->suggestion))
+    return TRUE;
+
   /* determine current settings */
-  g_object_get (G_OBJECT (TERMINAL_WIDGET (widget)->preferences),
+  g_object_get (G_OBJECT (terminal_widget->preferences),
                 "shortcuts-no-menukey", &shortcuts_no_menukey,
                 NULL);
 
@@ -854,7 +866,7 @@ terminal_widget_key_press_event (GtkWidget *widget,
           && (event->state & GDK_SHIFT_MASK) != 0
           && event->keyval == GDK_KEY_F10))
     {
-      terminal_widget_context_menu (TERMINAL_WIDGET (widget), 0, event->time, (GdkEvent *) event);
+      terminal_widget_context_menu (terminal_widget, 0, event->time, (GdkEvent *) event);
       return TRUE;
     }
 
@@ -1168,4 +1180,30 @@ terminal_widget_hyperlink_hover_uri_changed (TerminalWidget *widget,
     return;
 
   gtk_widget_set_tooltip_text (GTK_WIDGET (widget), uri);
+}
+
+
+
+/**
+ * terminal_widget_set_suggestion:
+ * @widget     : a #TerminalWidget.
+ * @suggestion : the #TerminalSuggestion of the screen @widget belongs to.
+ *
+ * Lets @widget hand the "Right" key to @suggestion while a suggestion is shown.
+ * The suggestion is owned by the screen, @widget only borrows it.
+ **/
+void
+terminal_widget_set_suggestion (TerminalWidget *widget,
+                                TerminalSuggestion *suggestion)
+{
+  g_return_if_fail (TERMINAL_IS_WIDGET (widget));
+  g_return_if_fail (suggestion == NULL || TERMINAL_IS_SUGGESTION (suggestion));
+
+  if (widget->suggestion != NULL)
+    g_object_remove_weak_pointer (G_OBJECT (widget->suggestion), (gpointer) &widget->suggestion);
+
+  widget->suggestion = suggestion;
+
+  if (suggestion != NULL)
+    g_object_add_weak_pointer (G_OBJECT (suggestion), (gpointer) &widget->suggestion);
 }

@@ -222,4 +222,5 @@ if get_option('doc')
 endif
 subdir('icons')
 subdir('po')
+subdir('shell-integration')
 subdir('terminal')

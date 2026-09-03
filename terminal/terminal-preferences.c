@@ -135,6 +135,9 @@ enum
   PROP_CELL_WIDTH_SCALE,
   PROP_CELL_HEIGHT_SCALE,
   PROP_ENABLE_SIXEL,
+  PROP_MISC_COMMAND_SUGGESTIONS,
+  PROP_MISC_COMMAND_HISTORY_SIZE,
+  PROP_MISC_COMMAND_HISTORY_IGNORE_SPACE,
   N_PROPERTIES,
 };
 
@@ -1274,6 +1277,36 @@ terminal_preferences_class_init (TerminalPreferencesClass *klass)
     g_param_spec_boolean ("enable-sixel",
                           NULL,
                           "EnableSixel",
+                          TRUE,
+                          G_PARAM_READWRITE | G_PARAM_STATIC_STRINGS);
+
+  /**
+   * TerminalPreferences:misc-command-suggestions:
+   **/
+  preferences_props[PROP_MISC_COMMAND_SUGGESTIONS] =
+    g_param_spec_boolean ("misc-command-suggestions",
+                          NULL,
+                          "MiscCommandSuggestions",
+                          FALSE,
+                          G_PARAM_READWRITE | G_PARAM_STATIC_STRINGS);
+
+  /**
+   * TerminalPreferences:misc-command-history-size:
+   **/
+  preferences_props[PROP_MISC_COMMAND_HISTORY_SIZE] =
+    g_param_spec_uint ("misc-command-history-size",
+                       NULL,
+                       "MiscCommandHistorySize",
+                       100, 100000, 5000,
+                       G_PARAM_READWRITE | G_PARAM_STATIC_STRINGS);
+
+  /**
+   * TerminalPreferences:misc-command-history-ignore-space:
+   **/
+  preferences_props[PROP_MISC_COMMAND_HISTORY_IGNORE_SPACE] =
+    g_param_spec_boolean ("misc-command-history-ignore-space",
+                          NULL,
+                          "MiscCommandHistoryIgnoreSpace",
                           TRUE,
                           G_PARAM_READWRITE | G_PARAM_STATIC_STRINGS);
 

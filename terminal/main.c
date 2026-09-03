@@ -35,6 +35,7 @@
 #include "terminal-gdbus.h"
 #include "terminal-preferences-dialog.h"
 #include "terminal-private.h"
+#include "terminal-suggestion.h"
 #include "terminal-widget.h"
 #include "terminal-window.h"
 
@@ -202,6 +203,9 @@ main (int argc, char **argv)
 
   /* initialize GTK: do this before our parsing so GTK parses its options first */
   gtk_init (&argc, &argv);
+
+  /* register the termprops the shell integration uses, before any terminal exists */
+  terminal_suggestion_install_termprops ();
 
   /* parse some options we need in main, not the windows attrs */
   terminal_options_parse (argc, argv, &options);

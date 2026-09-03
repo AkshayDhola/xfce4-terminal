@@ -21,6 +21,7 @@
 
 #include "terminal-encoding-action.h"
 #include "terminal-enum-types.h"
+#include "terminal-history.h"
 #include "terminal-preferences-dialog.h"
 #include "terminal-private.h"
 #include "terminal-util.h"
@@ -65,6 +66,10 @@ terminal_preferences_dialog_presets_load (TerminalPreferencesDialog *dialog,
 static void
 terminal_preferences_dialog_reset_cell_scale (TerminalPreferencesDialog *dialog,
                                               GtkWidget *widget);
+#if VTE_CHECK_VERSION(0, 78, 0)
+static void
+terminal_preferences_dialog_clear_history (TerminalPreferencesDialog *dialog);
+#endif
 static void
 terminal_preferences_dialog_reset_compatibility_options (TerminalPreferencesDialog *dialog,
                                                          GtkWidget *widget);
@@ -1665,6 +1670,82 @@ terminal_preferences_dialog_init (TerminalPreferencesDialog *dialog)
   gtk_label_set_mnemonic_widget (GTK_LABEL (label), combo);
   gtk_widget_show (combo);
 
+#if VTE_CHECK_VERSION(0, 78, 0)
+  /*
+   * Command Suggestions
+   */
+  terminal_preferences_dialog_new_section (&frame, &vbox, &grid, &label, &row, _("Command Suggestions"));
+
+  button = gtk_check_button_new_with_mnemonic (_("Su_ggest previously used commands"));
+  gtk_widget_set_tooltip_text (button, _("Show the best matching command from previous successful runs as dimmed text after the cursor, which the Right arrow key accepts. This needs the shell integration snippet below."));
+  g_object_bind_property (G_OBJECT (dialog->preferences), "misc-command-suggestions",
+                          G_OBJECT (button), "active",
+                          G_BINDING_BIDIRECTIONAL | G_BINDING_SYNC_CREATE);
+  gtk_grid_attach (GTK_GRID (grid), button, 0, row, 3, 1);
+  gtk_widget_show (button);
+
+  /* next row */
+  row++;
+
+  button = gtk_check_button_new_with_mnemonic (_("_Forget commands starting with a space"));
+  g_object_bind_property (G_OBJECT (dialog->preferences), "misc-command-history-ignore-space",
+                          G_OBJECT (button), "active",
+                          G_BINDING_BIDIRECTIONAL | G_BINDING_SYNC_CREATE);
+  g_object_bind_property (G_OBJECT (dialog->preferences), "misc-command-suggestions",
+                          G_OBJECT (button), "sensitive",
+                          G_BINDING_SYNC_CREATE);
+  gtk_grid_attach (GTK_GRID (grid), button, 0, row, 3, 1);
+  gtk_widget_show (button);
+
+  /* next row */
+  row++;
+
+  label = gtk_label_new_with_mnemonic (_("Remembered commands:"));
+  gtk_label_set_xalign (GTK_LABEL (label), 0.0f);
+  gtk_grid_attach (GTK_GRID (grid), label, 0, row, 1, 1);
+  gtk_widget_show (label);
+
+  button = gtk_spin_button_new_with_range (100u, 100u * 1000u, 100);
+  g_object_bind_property (G_OBJECT (dialog->preferences), "misc-command-history-size",
+                          G_OBJECT (button), "value",
+                          G_BINDING_BIDIRECTIONAL | G_BINDING_SYNC_CREATE);
+  g_object_bind_property (G_OBJECT (dialog->preferences), "misc-command-suggestions",
+                          G_OBJECT (button), "sensitive",
+                          G_BINDING_SYNC_CREATE);
+  gtk_widget_set_halign (button, GTK_ALIGN_START);
+  gtk_grid_attach (GTK_GRID (grid), button, 1, row, 1, 1);
+  terminal_gtk_label_set_a11y_relation (GTK_LABEL (label), button);
+  gtk_label_set_mnemonic_widget (GTK_LABEL (label), button);
+  gtk_widget_show (button);
+
+  button = gtk_button_new_with_mnemonic (_("C_lear History"));
+  g_signal_connect_swapped (G_OBJECT (button), "clicked",
+                            G_CALLBACK (terminal_preferences_dialog_clear_history), dialog);
+  gtk_widget_set_halign (button, GTK_ALIGN_START);
+  gtk_grid_attach (GTK_GRID (grid), button, 2, row, 1, 1);
+  gtk_widget_show (button);
+
+  /* next row */
+  row++;
+
+  label = gtk_label_new (_("Suggestions need the shell to report what it ran. Add this to ~/.bashrc, or the matching .zsh file to ~/.zshrc:"));
+  gtk_label_set_xalign (GTK_LABEL (label), 0.0f);
+  gtk_label_set_line_wrap (GTK_LABEL (label), TRUE);
+  gtk_grid_attach (GTK_GRID (grid), label, 0, row, 3, 1);
+  gtk_widget_show (label);
+
+  /* next row */
+  row++;
+
+  entry = gtk_entry_new ();
+  gtk_entry_set_text (GTK_ENTRY (entry), ". " PACKAGE_DATADIR "/shell-integration/xfce4-terminal.bash");
+  gtk_editable_set_editable (GTK_EDITABLE (entry), FALSE);
+  gtk_widget_set_can_focus (entry, TRUE);
+  gtk_widget_set_hexpand (entry, TRUE);
+  gtk_grid_attach (GTK_GRID (grid), entry, 0, row, 3, 1);
+  gtk_widget_show (entry);
+#endif
+
 
 
   /*
@@ -2140,6 +2221,23 @@ terminal_preferences_dialog_reset_cell_scale (TerminalPreferencesDialog *dialog,
   const gchar *properties[] = { "cell-width-scale", "cell-height-scale" };
   terminal_preferences_dialog_reset_properties (dialog, G_N_ELEMENTS (properties), properties);
 }
+
+
+
+#if VTE_CHECK_VERSION(0, 78, 0)
+static void
+terminal_preferences_dialog_clear_history (TerminalPreferencesDialog *dialog)
+{
+  TerminalHistory *history;
+
+  if (!xfce_dialog_confirm (GTK_WINDOW (dialog), "edit-clear", _("_Clear"), NULL, _("Forget every command remembered for suggestions?")))
+    return;
+
+  history = terminal_history_get ();
+  terminal_history_clear (history);
+  g_object_unref (G_OBJECT (history));
+}
+#endif
 
 
 

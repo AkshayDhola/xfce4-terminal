@@ -50,6 +50,7 @@
 #include "terminal-marshal.h"
 #include "terminal-private.h"
 #include "terminal-screen.h"
+#include "terminal-suggestion.h"
 #include "terminal-util.h"
 #include "terminal-widget.h"
 #include "terminal-window-dropdown.h"
@@ -233,6 +234,8 @@ struct _TerminalScreen
   GtkWidget *scrollbar;
   GtkWidget *tab_label;
 
+  TerminalSuggestion *suggestion;
+
   GdkRGBA background_color;
 
   guint session_id;
@@ -402,6 +405,9 @@ terminal_screen_init (TerminalScreen *screen)
 
   gtk_container_add (GTK_CONTAINER (screen), screen->swin);
 
+  screen->suggestion = terminal_suggestion_new (GTK_OVERLAY (screen), VTE_TERMINAL (screen->terminal));
+  terminal_widget_set_suggestion (TERMINAL_WIDGET (screen->terminal), screen->suggestion);
+
   screen->scrollbar = gtk_scrolled_window_get_vscrollbar (GTK_SCROLLED_WINDOW (screen->swin));
   g_signal_connect_after (G_OBJECT (screen->scrollbar), "button-press-event", G_CALLBACK (gtk_true), NULL);
 
@@ -460,6 +466,8 @@ terminal_screen_finalize (GObject *object)
 
   if (screen->loader != NULL)
     g_object_unref (G_OBJECT (screen->loader));
+
+  g_object_unref (G_OBJECT (screen->suggestion));
 
   g_cancellable_cancel (screen->cancellable);
   g_object_unref (screen->cancellable);
@@ -953,12 +961,13 @@ terminal_screen_get_child_environment (TerminalScreen *screen)
   const gchar *value;
   GtkWidget *toplevel;
   GdkDisplay *display;
+  gboolean suggestions;
 
   /* get all the environ variables */
   env = g_listenv ();
 
   n = g_strv_length (env);
-  result = g_new (gchar *, n + 4);
+  result = g_new (gchar *, n + 5);
 
   for (n = 0, p = env; *p != NULL; ++p)
     {
@@ -970,7 +979,8 @@ terminal_screen_get_child_environment (TerminalScreen *screen)
           || strcmp (*p, "COLORTERM") == 0
           || strcmp (*p, "DISPLAY") == 0
           || strcmp (*p, "WAYLAND_DISPLAY") == 0
-          || strcmp (*p, "TERM") == 0)
+          || strcmp (*p, "TERM") == 0
+          || strcmp (*p, "XFCE4_TERMINAL_SHELL_INTEGRATION") == 0)
         continue;
 
 #if !VTE_CHECK_VERSION(0, 51, 90)
@@ -992,6 +1002,11 @@ terminal_screen_get_child_environment (TerminalScreen *screen)
   g_strfreev (env);
 
   result[n++] = g_strdup_printf ("COLORTERM=%s", PACKAGE_NAME);
+
+  /* the shell integration snippets stay quiet unless this is set */
+  g_object_get (G_OBJECT (screen->preferences), "misc-command-suggestions", &suggestions, NULL);
+  if (suggestions)
+    result[n++] = g_strdup ("XFCE4_TERMINAL_SHELL_INTEGRATION=1");
 
   toplevel = gtk_widget_get_toplevel (GTK_WIDGET (screen));
   display = gtk_widget_get_display (toplevel);
@@ -3071,6 +3086,10 @@ terminal_screen_update_font (TerminalScreen *screen)
 
   vte_terminal_set_cell_width_scale (VTE_TERMINAL (screen->terminal), cell_width_scale);
   vte_terminal_set_cell_height_scale (VTE_TERMINAL (screen->terminal), cell_height_scale);
+
+  /* the ghost text of a suggestion has to keep matching the terminal font */
+  if (screen->suggestion != NULL)
+    terminal_suggestion_update_style (screen->suggestion);
 
   /* update window geometry if required: not needed for drop-down, optional when only zoomed in/out */
   if ((font_change || resize_on_zoom)

@@ -714,6 +714,32 @@
           </para>
         </listitem>
       </varlistentry>
+
+      <varlistentry>
+        <term><filename>${XDG_DATA_HOME}/xfce4/terminal/command-history</filename></term>
+        <listitem>
+          <para>
+            The commands remembered for inline command suggestions, one per line, oldest
+            first. It is only written when command suggestions are enabled, and only
+            commands which exited successfully are recorded. The <guilabel>Clear
+            History</guilabel> button on the <guilabel>Advanced</guilabel> page of the
+            preferences empties it.
+          </para>
+        </listitem>
+      </varlistentry>
+
+      <varlistentry>
+        <term><filename>${datadir}/xfce4-terminal/shell-integration/</filename></term>
+        <listitem>
+          <para>
+            Snippets for bash and zsh which report the command that was run and whether it
+            succeeded, so that &application; can suggest previously successful commands
+            while you type. Source the one matching your shell from your shell startup
+            file; the preferences show the exact line. Without it, no commands are
+            recorded and no suggestions appear.
+          </para>
+        </listitem>
+      </varlistentry>
     </variablelist>
   </refsect1>
 

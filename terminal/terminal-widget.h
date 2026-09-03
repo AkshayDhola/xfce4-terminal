@@ -23,6 +23,8 @@
 #include <libxfce4ui/libxfce4ui.h>
 #include <vte/vte.h>
 
+#include "terminal-suggestion.h"
+
 G_BEGIN_DECLS
 
 #define TERMINAL_TYPE_WIDGET (terminal_widget_get_type ())
@@ -52,6 +54,10 @@ typedef enum
 
 XfceGtkActionEntry *
 terminal_widget_get_action_entries (void);
+
+void
+terminal_widget_set_suggestion (TerminalWidget *widget,
+                                TerminalSuggestion *suggestion);
 
 G_END_DECLS
 
